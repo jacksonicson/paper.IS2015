@@ -1,0 +1,17 @@
+#!/bin/bash
+
+cd ../../times/Times/src
+python times.py &
+TIMESPID=$!
+cd ../../../control/Control
+
+sleep 3
+
+RP=/home/nepal/work
+export PYTHONPATH=${PYTHONPATH}:$RP/control/Control/generated:$RP/control/Control/src:$RP/fflop:$RP/times/Times/src:$RP/dtw/src
+
+echo $PYTHON_PATH
+
+python src/balancer/simulation_loop.py controller_sim
+
+kill $TIMESPID

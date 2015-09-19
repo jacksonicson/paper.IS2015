@@ -1,0 +1,284 @@
+---
+title: "Schedule Parametrization Sensitivity"
+output:
+  html_document:
+    highlight: textmate
+    theme: cerulean
+    toc: yes
+---
+
+```{r,echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+source('analysis - simulations.R')
+```
+
+# Simulations on Combined Controllers
+
+## Configuration
+* Release tag: __MKIIRAC__
+* Mode: Experiment
+* Environment: Dynamic schedules
+* Description: Check different placement and reallocation controlle combinations.
+* Goal: Do some combinations perform better than others. 
+* GDrive: [Link](https://docs.google.com/spreadsheet/ccc?key=0AnauMDTWhICjdEZtRVZKN2VXMGlyeTl6S184aFg1MHc#gid=6)
+* Configuration
+  * Initial placement: deactivated
+  * Placement: $\{WorstFitDemand, WorstFit, FirstFitDemand\}$
+  * Reallocation: $\{KMControl, TControl, None\}$
+  * Schedule: $[2000, 3000[$ 
+  * Workload: Times MKII - MKII
+  * Nodes & VMs & Sizes: Based on infrastructure
+  * Executable: `start_benchmark_btree_mkII.py`, `simulation_loop.py`
+  * Simulation loop configuration: `command = ReallocationPlacementInteractionCB` 
+
+
+## Problems with MKII experiments and simulations
+A number of critical problems with MKII exist. All problems could be fixed by adapting the simulation framework. Still, it would be better to condunct a new set of experiments under MKIII. 
+
+* Profile frequecy was calculated wrong. Profile lengths were: 
+  * Small: 6h (f=75)
+  * Medium: 1.5h (f=18)
+  * Large: 0.3h (f=4)
+  * Fixed: Frequency override in simulations. 
+* Ramp up and ramp down was not considered in simulations.
+  * Fixed: Added ramp-up calculation in load driver
+* Node load calculation was based on planning CPU cores. Now it is based on real CPU cores as assigned to VMs. Lower CPU core numbers are used for planning in order not to overload the infrastructure. 
+  * Previous: $NL=VL \cdot \frac{C}{NC}$. NL = Noad Load, VL = VM Load, C = VM Planning Cores VM, NC = Node Cores. 
+  * Now: $NL= (VL \cdot F) \cdot \frac{RC}{NC}$. RC = VM Really Assigned Cores, F = Scaling factor. 
+  * Node load is based on number of users in experiments. The scaling factor transforms the load profile into the appropriate range as found in an experiment. 
+  * Fixed: New calculation
+  
+Experiments are conducted with invalid load profiles. This will be fixed in MKIII. 
+
+
+## Description
+All controller combinations of placement and reallocation controllers are evaluated by all production schedules. 
+
++ Factors
+  + Placement controllers: First-Fit, Best-Fit, Worst-Fit, Dotproduct, Random
+  + Reallocation controllers: None, KMControl, TControl
+  + Schedule: production schedules
+
++ Target variables
+  + Average server count = *avg..srv..count*
+  + Max server count = *max..servers*
+  + Migration count = *Migrations*
+ 
++ Questions
+  + Which controller combination performs best
+  + Significant differences using KMControl and TControl
+ 
+
+## Controller MRR rankings
+Each controller has a __position for each schedule__. For each schedule all controllers are sorted by a __metric__. Its list position within the sorted list is referred to as __position__. For each schedule and controller there is one position value, giving a 2x2 matrix. For each of the following metrics the position matrix is shown as a heatmap below: 
+
+* Average server demand
+* Maximum server demand
+* Number of live-migrations
+
+
+### Heatmap (Averager Server Demand)
+```{r, echo=FALSE, warning=FALSE, fig.height=5, fig.width=8}
+t = heatmap.mrr('avg..srv..count', 6, function(fmark, p) {
+  p = fmark(p, 'Reservation\nStatic', 0.5, 6)
+  p = fmark(p, 'Reservation +\nDynamic', 6.5, 5)
+  p = fmark(p, 'Demand\nStatic', 11.5, 5)
+  p = fmark(p, 'Mostly Reservation + Dynamic', 16.5, 18)
+  p = fmark(p, 'Demand + Dymamic', 34.5, 10)
+  return(p)
+})
+grid.draw(t)
+```
+
+### Heatmap (Maximum Server Demand)
+```{r, echo=FALSE, fig.height=5, fig.width=8}
+t = heatmap.mrr('max..servers', 6, function(fmark, p) {
+  return(p)
+})
+grid.draw(t)
+```
+
+
+### Heatmap (Migrations)
+```{r, echo=FALSE, fig.height=5, fig.width=8}
+t = heatmap.mrr('Migrations', 0, function(fmark, p) {
+  p = fmark(p, 'Reservation + Dynamic', 0.5, 13)
+  p = fmark(p, 'Mostly Demand + Dynamic', 13.5, 20)
+  p = fmark(p, 'Reservation and Demand\nStatic', 33.5, 11)
+  return(p)
+})
+grid.draw(t)
+```
+
+
+## Average differences between clusters in heatmap (Average Server Demand)
+```{r, results='asis', echo=FALSE, warning=FALSE}
+summary = average.cluster.differences()
+kable(summary)
+```
+
+```{r, comment=NA, echo=FALSE}
+# Set column titles
+title = c("Cluster",
+          "$\\overline{\\text{SD}}$", "$\\sigma\\text{SD}$", "$\\Delta\\text{SD}$",
+          "$\\overline{\\text{MG}}$", "$\\sigma\\text{MG}$", "$\\Delta\\text{MG}$")
+names(summary) = title
+
+# Create table
+print(xtable(summary, digits=2), 
+      include.rownames=FALSE,
+      include.colnames=TRUE,
+      booktabs=TRUE,
+      vline.after=c(5),
+      comment=FALSE,
+      sanitize.colnames.function = function(x) {return(x)}
+)
+```
+
+```{r, comment=NA, echo=FALSE}
+# Create table
+print(xtable(summary, digits=2), 
+      type='html',
+      sanitize.colnames.function = function(x) {return(x) },
+      include.rownames=FALSE,
+      include.colnames=TRUE,
+      comment=FALSE,
+      )
+```
+
+## Controller ranking
+
+Controllers are ranked by their positions for each schedule on multiple metrics. Ranking is performed using a variant of MRR (Mean Reciprocal Ranking) as described by [Wikipedia](http://en.wikipedia.org/wiki/Mean_reciprocal_rank). 
+
+$$MRR = \frac{1}{\vert Q \vert} \sum_{i=1}^{\vert Q \vert}\frac{1}{rank_i}$$ 
+
+For each schedule and metric combination out of $Q$ one ranking $rank_i$ exists. Controllers are sorted by increasing $MRR$ value. 
+
+
+```{r, results='asis', echo=FALSE}
+results = build.rank.table(rank.MRR, c('avg..srv..count', 'max..servers', 'Migrations'))
+kable(results)
+```
+
+```{r, comment=NA, echo=FALSE}
+# Row additions
+addtorow = list()
+addtorow$pos = list(-1, -1, -1, 0, nrow(results))
+addtorow$command = c('\\toprule \n',
+                     '& \\multicolumn{4}{c}{MRR Rankings} & \\multicolumn{3}{|c}{Average Simulation Results} \\\\ \n',
+                     '\\midrule \n',
+                     '\\midrule \n',
+                     '\\bottomrule \n')
+
+# Define table titles
+title = c("Controller", "$\\overline{\\text{MRR}}$"
+          , "$\\overline{\\text{SD}}$", "$\\left \\lceil \\text{SD} \\right \\rceil$", "$\\text{MG}$"
+          , "$\\overline{\\text{SD}}$" , "$\\left \\lceil \\text{SD} \\right \\rceil$", "$\\text{MG}$")
+names(results) = title
+
+# Create talbe
+print(xtable(results, digits=2), 
+      add.to.row = addtorow,
+      hline.after=NULL,
+      include.rownames=FALSE,
+      include.colnames=TRUE,
+      vline.after=c(5),
+      booktabs=TRUE,
+      comment=FALSE,
+      sanitize.colnames.function = function(x) {return(x)}
+)
+```
+
+
+# Comparing Combined Controllers 1:1
+
+```{r, echo=FALSE}
+t1 = wilcox.test(positions.for('D/FF/KM'), 
+            positions.for('D/FF/TC')) 
+
+t2 = wilcox.test(positions.for('D/FF/KM'), 
+                 positions.for('R/WF/TC')) 
+```
+
+TControl and KMControl reallocation controllers deliver good rankings while KMControl seems to perform slightly better. A Wilxocon rank-sum test is conducted on all metric rankings for both controllers. A p-value of W(`r length(positions.for('D/FF/KM'))`)=`r as.numeric(t1$statistic)`, p=`r t1$p.value` indicates no significance. Both controllers perform equally good. 
+
+Comparing first-fit-demand with KMControl against wrst-fit and TControl yields a p-value of W(`r length(positions.for('D/FF/KM'))`)=`r as.numeric(t2$statistic)`, p=`r t2$p.value` which indicates an inferior performance of the first one. 
+
+
+```{r, echo=FALSE}
+data.demand = add.demand.flag(data)
+
+# Get demand based controllers for schedule id 
+compare.avg.srv.count = function(schedule.id) {
+  a = data.demand[data.demand$demand == FALSE & data.demand$SCHEDULE_ID == schedule.id,]$avg..srv..count
+  b = data.demand[data.demand$demand == TRUE  & data.demand$SCHEDULE_ID == schedule.id,]$avg..srv..count
+  t = wilcox.test(a,b )
+  return(t)
+}
+
+compare.migrations = function(schedule.id) {
+  a = data.demand[data.demand$demand == FALSE & data.demand$SCHEDULE_ID == schedule.id,]$Migrations
+  b = data.demand[data.demand$demand == TRUE  & data.demand$SCHEDULE_ID == schedule.id,]$Migrations
+  t = wilcox.test(a,b )
+  return(t)
+}
+```
+
+The following table compares all demand based controllers with all reservation based controllers for each schedule instance using Wilxocon rank-sum test. A significant difference could be found in all cases. Demand based controllers outperformend reservervation based ones.  
+
+```{r, results='asis', echo=FALSE, warning=FALSE}
+tbl = sapply(unique(data$SCHEDULE_ID), function(schedule.id) {
+  t = compare.avg.srv.count(schedule.id)
+  r = c(schedule.id, t$p.value, t$statistic)
+  return(r)
+})
+
+tbl=as.data.frame(t(tbl))
+names(tbl) = c('ScheduleID', 'p-value', 'test statistic')
+kable(as.data.frame(tbl))
+```
+
+The same thing is done for migrations. It turns out that demand based controllers almost always require significantly less migrations compared to reservation based ones. 
+
+```{r, results='asis', echo=FALSE, warning=FALSE}
+tbl = sapply(unique(data$SCHEDULE_ID), function(schedule.id) {
+  t = compare.migrations(schedule.id)
+  r = c(schedule.id, t$p.value, t$statistic)
+  return(r)
+})
+
+tbl=as.data.frame(t(tbl))
+names(tbl) = c('ScheduleID', 'p-value', 'test statistic')
+kable(as.data.frame(tbl))
+```
+
+# ANOVA Analysis
+
+**Normal distribution cannot be assumed**
+
+Average server demand is not normal distributed as seen in the QQ plot and histograms and Shapiro-Wil normality test rejects H0 at a p-value `r  shapiro.test(data$avg..srv..count^-0.4444)$p.value` of so that normal distribution cannot be assumed.
+
+The following ANOVA analysis should estimate if placement or reallocation controllers or their interaction have a significant effect on the dependent variable average servers. 
+
+* Data _without a reallocation strategy_ are removed
+* A box-cox method is used to estimate a power-transformation on the average server count so that normality assumption is fulfilled. Plots are rendered. 
+* A histogram of the transformed average server demand data is rendered
+* A shapiro-wilk test is conducted on the transformed data. Still rejects H0 that distribution resembles normal distribution. 
+* ANOVA anylsis is conducted with the model average server demand ~ placement controller * reallocation controller 
+* ANOVA summary is printed and plots are rendered
+
+ANOVA results indicate that no interaction effect between placement and reallocation strategy exists. However, the choice of both controllers has a significant effect on the solution quality. If combined controllers without a reallocation strategy are considered, an interaction effect is present due to ANOVA. _This data should be considered with care as ANOVA assumptions (normally distributed data) are violated._
+
+```{r, fig.width=3, fig.height=3, echo=FALSE}
+# Set R output width in chars
+options(width=150)
+
+# Fit anova
+fit = anova.fit()
+summary(fit)
+
+plot(fit)
+plot(TukeyHSD(fit))
+```
+
+  
+

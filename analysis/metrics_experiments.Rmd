@@ -1,0 +1,79 @@
+# Documentation of experimental results
+
+All experimental results are added to a [Google Spreadsheet](https://docs.google.com/spreadsheet/ccc?key=0AnauMDTWhICjdEZtRVZKN2VXMGlyeTl6S184aFg1MHc). Multiple replicas (usually 3) of each experimental treatment are conducted. All replicas are aggreagated in one result row presented. Usually this is done by taking the mean of all results. In addition the range of results is printed in parentheses. Each output column is documented in the following. 
+
+## Table with all result columns
+
+| MK I | MK II | Description                                                                                                                                     |
+|------|-------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| G    | J     | MEAN server count                                                                                                                               |
+| H    | K     | 50 quantile server count                                                                                                                        |
+| I    | L     | 90 quantile server count                                                                                                                        |
+| J    | M     | MIN server count                                                                                                                                |
+| K    | N     | MAX server count                                                                                                                                |
+| L    | O     | MEAN server CPU utilization                                                                                                                     |
+| M    | P     | 50 quantile server CPU utilization                                                                                                              |
+| N    | Q     | MEAN server MEM utilization                                                                                                                     |
+| O    | R     | SUCCESSFUL operations count                                                                                                                     |
+| P    | S     | FAILED operations count                                                                                                                         |
+| Q    | T     | MEAN operations response time                                                                                                                   |
+| R    | U     | 50 quantile operations response time (sampled)                                                                                                  |
+| S    | V     | 90 quantile operations response time (sampled)                                                                                                  |
+| T    | W     | 50 quantile operation response time (AVG over all targets)                                                                                      |
+| U    | X     | 90 quantile operation response time (AVG over all targets)                                                                                      |
+| V    | Y     | MAX operations response time                                                                                                                    |
+| W    | Z     | operations per second                                                                                                                           |
+| X    | AA    | requests per second                                                                                                                             |
+| Y    | AB    | MK II operations response time threshold violations MK I aggreagation over 3 sec intervals where mean response time was > 3 sec for each target |
+| Z    | AC    | live migrations count                                                                                                                           |
+| AA   | AD    | Server CPU > 90% measurements count                                                                                                             |
+| AB   | AE    | Server activations count                                                                                                                        |
+| AC   | AF    | Server deactivations count                                                                                                                      |
+| AD   | AG    | Total seen operations count (= O+P)                                                                                                             |
+
+## Simple metrics
+
+For the following metrics only the mean value over all replication results is reported: 
+
+* Server count
+* Server CPU load
+* Server MEM load
+
+
+## Average response time
+
+Average response time is reported in milliseconds. It is reported as `mean (range[%])`. Range is calculated by $1 - \frac{min(avg rtime)}{max(avg rtime)}$. 
+
+## Max response time
+
+Average response time is reported in milliseconds. It is reported as `mean (range[%])`. Range is calculated by $1 - \frac{min(max rtime)}{max(max rtime)}$.
+
+## Operations per second
+
+It is reported as `mean (range[%])`. Range is calculated by $1 - \frac{min(ops)}{max(ops)}$.
+
+## Response time threshold violations
+
+It is reported as `mean (range[%])`. Range is calculated by $1 - \frac{min(violations)}{max(violations)}$.
+
+## Service level (MK I)
+
+For experiments of version `MKI` service level is calculated as follows. This calculations should not be applied on experiments of version `MKII`!
+
+It is reported as `mean (service quality[%])`. Service quality is calculated by $1- \frac{rtime violations \cdot 3}{6 \cdot 60 \cdot 60 \cdot 18}$.
+
+This calculation was used for all **MK I experiments** only. At this time the number of operations with a response time > 3 seconds was not known. However, data was recorded for 3 second intervals. At the end of each interval descriptive statistics are reported as a time series over the last three seconds. This statistics include the average response time and is written by the *SonarMetricWriter*. 
+
+For MK I experiments the time series with 3 second interval mean response times is fetched from Sonar. Ech time a 3 second interval has a mean response time > 3 seconds counts as violated interval. The total number of intervals in an experiment with duration in hours is: $\#VMs \cdot \frac{duration (h) \cdot 60 \cdot 60 [sec]}{3 [sec]}$. The service quality is calculated as the inverse percentage of violated time intervals out of the total number of time intervals. 
+
+Since December 2012 the *SonarMetricRecorder* logged the number of operations that had a response time above 3, 4, ..., inf seconds. This time series can be aggregated and used to calculate the number of operations with more then 3 second response time. This would enable us to calcluate the exact service level. However, this data is not available for a large part of our experiments. **We are not able to re-run the experiment because of the infrastructure upgrade to MK II**.
+
+## Service level (MK II)
+
+It is reported as `mean (service quality[%])`. Service quality is calculated by $1- \frac{failed operations + rtime violations}{total operations}$.
+
+For MK II experiments the number of operations with a response time above 3 seconds is known in combination with the number of failed migrations. This allows us to calculate an exact service level. 
+
+## Migrations
+
+It is reported as `mean (range[%])`. Range is calculated by $1 - \frac{min(migrations)}{max(migrations)}$.

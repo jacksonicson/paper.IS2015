@@ -1,0 +1,162 @@
+---
+title: "Schedule Parametrization Sensitivity"
+output:
+  html_document:
+    highlight: textmate
+    theme: cerulean
+    toc: yes
+---
+
+```{r configuration, echo=FALSE, message=FALSE, warning=FALSE}
+# How many schedule instances for each schedule configuration
+SCHEDULE_INSTANCES = 25
+
+# Load data and calculate normalized values
+source("analysis - schedule param.R")
+
+# Output width in chars
+options(width=150)
+
+# Configurations
+k=2^4 # configurations
+n=SCHEDULE_INSTANCES # instances for each configuration
+i=k*n # total number of instances
+c=length(placement.heuristics) # Number of placement heuristics
+``` 
+
+# Schedule Configuration Effects  
+
+## Description
+With this set of simulations we whant to find out which schedule builder parameters affect the solution quality of placement controllers (referred to as controller in the following) while __not using a reallocation controller__.
+
+Two types of controllers are evaluated. __Reservation__ based ones leverage only VM resource reservations. A servers' utilization is determined by substracting all VM reservations from its capacity. __Demand__ based controllers operate on the measured server utilization over the last couple of minutes. Results do __not__ depend on forecasted or known CPU workload profiles of VMs. 
+
+Demand based controllers should _only be used in combination with reallocation controllers_. Server utilization is based on a point-estimate of the last minutes. Sver overutilizations might occur if the VMs overall increase their resource utilization.
+
+
+## Configuration
+Schedule configuration parameters: 
+
+* Number of VMs launched
+* VM inter arrival time
+* VM lifetime
+* Domain sizes (integral (= 1), fractional (= 2))
+
+Both lifetime and inter arrival time are mean values of an exponential distribution. Negative lifetimes and inter-arrival times are dismissed. 
+
+For each configuration parameter two levels where configured giving a $2^k$ fully factorial design as shown in the following table. `r n` schedules where randomly generated for each configuration. In total this gives `r k` configurations with `r i` schedule instances. `r c` controllers were simulated which totals in `r c*i` simulations.  
+
+```{r factors table, echo=FALSE, results='asis'}
+factors.names = c('VM launches', 'VM inter-arrival time (min)', 'VM lifetime (h)', 'Domain sizes')
+factors.low = c(400, 5, 1, 1)
+factors.heigh = c(500, 20, 6, 2)
+factors = data.frame(factors.names, factors.low, factors.heigh)
+names(factors) = c('Factor', 'Low value', 'High value')
+kable(factors)
+```
+
+```{r factors table latex, echo=FALSE, comment=NULL}
+latex.table(factors, 'Factors and levels for schedule configuration sensitivity analysis', 'tbl:configuration sensitivity factors')
+```
+
+No additional limits are enforced on the schedule building process. Neither is maximum parallelity limited, nor is maximum runtime of a schedule. Both settings are likely to have an impact on the influence of configuration factors. 
+
+Analysis on previous data found that number of VM launches is significant regarding a controllers performance. We could not explain this result initially. The most obvious reason is that many VMs started at the beginning of a schedule are still running at the end of an schedule when the last scheduled VMs are started. This means, during the whole schedule the required server count increased. A schedule configuration with larger launches whould increase the schedule execution length and in turn increase average and maximum server demand. __In this case__ number of launches has a significant impact on both, average and maximum server demand. 
+
+
+## Result files
+* _schedule_configuration.csv_: Holds schedule configurations
+* _schedule_conf_sensitivity_heuristic.csv_: Simulation results if VMs are allocated by placement controllers
+* _schedule_conf_sensitivity_lowerbound.csv_: Lower bound results for each schedule
+
+Multiple different result files exist. The latest file set $4$ was used for this analysis. All other files did use other simulation configurations or different factor levels. An optimal solution for the results used does not exist, its impossible to compute in resonable time. 
+
+
+## List of all placement controllers simulated
+```{r list of placement controllers, echo=FALSE, results='asis', message=FALSE}
+t = sapply(as.vector(placement.heuristics), function(heuristic) {
+  cat(sprintf("* %s \n", as.character(heuristic)))
+})
+```
+
+## Normalization
+Why is normalization required? A placement controller is evaluated for $n$ different schedules instances which stem from _different schedule configurations_. Even if solved optimally, each schedule exhibits a different average and maximum server demand. 
+
+__For the very same placement controller, average server demands for two different schedule instances are not comparable!__
+
+We are interested in the overall placement controller performance over all schedule instances. Schedule performance needs to be normalized for the schedule instance. With $m^{avg}_{FF}$ beeing the performance metric for average server demand of the First-Fit controller and $m^{avg}_{RAND}$ for the random controller. A normalized value is calculated as follows:
+
+$$n^{avg}_{FF} = \frac{m^{avg}_{FF}}{m^{avg}_{RAND}}$$.
+
+Normalized performance metrics are comparable across different schedule instances for the same controller.
+
+__For the very same placement controller, two normalized values for two different schedule instances are comparable!__ Assuming normalized values of two schedule instances calculated with the same placement controller are 0.8 and for 0.9. The controller performend 10% and 20% better compared to a random placement, a __statement that is independent to the schedule instance and configuration__.
+
+A set that holds all normalized values of all placement controllers and schedule instances is __not necessarely normal distributed__! One placement controller type like demand based ones might continuously outperforme another type like reservation based. This would lead to a multimodal distribution.
+
+To summarized both statements above: 
+
+1.   Normalized values of __the same__ placement controller are comparable and should follow a normal distribution. 
+2.   A Normal distribution of __all__ placement controller normalized values __must not be assumed__.  
+
+
+## Global data analysis
+As described above a normal distribution over all normalized values must not be assumed. However, we found that normalized values are almost normally distributed if separated between demand and reservation based placement controllers. 
+
+
+### RESERVATION based controllers
+```{r, echo=FALSE}
+# Filter for reservation/demand based controllers
+filter.curr.name = 'RESERVATION'
+filter.curr = filter.non.demand
+``` 
+
+```{r, child='analysis - schedule param child 1.Rmd'}
+# Call child with the furrent data set
+```
+
+### DEMAND based controllers
+```{r, echo=FALSE}
+# Filter for reservation/demand based controllers
+filter.curr.name = 'DEMAND'
+filter.curr = filter.demand
+``` 
+
+```{r, child='analysis - schedule param child 1.Rmd'}
+# Call child with the furrent data set
+```
+
+
+# ANOVA
+```{r, echo=FALSE}
+p = 0.001
+```
+
+The previous analysis was conducted on all normalized values or a subset of them. As discussed at the beginning, this might not be a valid analysis. In addition an ANOVA analysis is conducted for each controller individually. 
+
+Histograms plot all efficiency values of a controller over all schedule instances. A *normal distribution* cannot be assumed, multiple normal distributions are superimposed. All efficiency values for *one controller on one schedule configuration* should be distributed normally. ANOVA analysis is conducted on efficiency values for one controller only. 
+
+
+# Average server demand
+```{r per-controller analysis plots avg, fig.width=4, fig.height=4, results='hold', echo=FALSE}
+t = per.strategy.histogram('avg')
+```
+
+A significance level of $p \leq `r p`$ is used to detect significant factors for normalized average server demand.
+
+```{r per-controller analysis significance avg, fig.width=4, fig.height=4, results='asis', echo=FALSE}
+t = per.strategy.significance(p, 'avg')
+```
+
+
+### Maximum server demand
+```{r per-controller analysis plots max, fig.width=4, fig.height=4, results='hold', echo=FALSE}
+t = per.strategy.histogram('max')
+```
+
+A significance level of $p \leq `r p`$ is used to detect significant factors for normalized maximum server demand.
+
+```{r per-controller analysis significance max, fig.width=4, fig.height=4, results='asis', echo=FALSE}
+t = per.strategy.significance(p, 'max')
+```
+

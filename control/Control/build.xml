@@ -1,0 +1,75 @@
+<project name="RelayControl" default="main" basedir=".">
+
+	<property name="collector" value="../../sonar/Collector" />
+	<property name="relay" value="../Relay" />
+	<property name="rain" value="../../rain" />
+	<property name="times" value="../../times/Times" />
+
+	<property name="sensorHub" value="../../sonar/SensorHub" />
+	<property name="specDriver" value="../../specDriver" />
+
+	<target name="thrift">
+		<exec executable="thrift">
+			<arg value="-out" />
+			<arg value="generated" />
+			<arg value="--gen" />
+			<arg value="py:twisted" />
+			<arg value="${relay}/relay.thrift" />
+		</exec>
+
+		<exec executable="thrift">
+			<arg value="-out" />
+			<arg value="generated" />
+			<arg value="--gen" />
+			<arg value="py:twisted" />
+			<arg value="${rain}/rain.thrift" />
+		</exec>
+
+		<exec executable="thrift">
+			<arg value="-out" />
+			<arg value="generated" />
+			<arg value="--gen" />
+			<arg value="py" />
+			<arg value="${collector}/collector.thrift" />
+		</exec>
+
+		<exec executable="thrift">
+			<arg value="-out" />
+			<arg value="generated" />
+			<arg value="--gen" />
+			<arg value="py" />
+			<arg value="${times}/times.thrift" />
+		</exec>
+
+		<exec executable="thrift">
+			<arg value="-out" />
+			<arg value="generated" />
+			<arg value="--gen" />
+			<arg value="py:twisted" />
+			<arg value="iaas.thrift" />
+		</exec>
+
+	</target>
+
+	<target name="ant_dependencies" depends="thrift">
+		<!-- Create deployment packages -->
+		<!-- These are all packages which are required by a drone -->
+		<!-- SensorHub - Required by the SensorHub installation drone -->
+		<!-- Relay - Required by the Relay installation drone -->
+		<!-- SpecDriver incl. Rain & SonarAppender - Required by the Rain installation drone -->
+
+		<!-- SensorHub -->
+		<ant inheritall="false" antfile="build.xml" target="main" dir="${sensorHub}" />
+		<copy file="${sensorHub}/build/sensorhub.zip" todir="drones/sensorhub_deploy" overwrite="true" />
+
+		<!-- Relay -->
+		<ant inheritall="false" antfile="build.xml" target="main" dir="${relay}" />
+		<copy file="${relay}/build/relay.zip" todir="drones/relay_deploy" overwrite="true" />
+
+		<!-- Rain -->
+		<ant inheritall="false" antfile="build.xml" target="copy_to_server" dir="${specDriver}" />
+	</target>
+
+	<target name="main" depends="thrift, ant_dependencies" />
+
+</project>

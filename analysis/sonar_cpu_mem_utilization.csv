@@ -1,0 +1,3 @@
+host	sensor	fromdate	fromtime	todate	totime
+srv0	psutilmem.phymem	11/25/2013	9:00	11/25/2013	19:30
+srv0	psutilcpu	11/25/2013	9:00	11/25/2013	19:30

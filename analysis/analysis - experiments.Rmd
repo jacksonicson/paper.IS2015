@@ -1,0 +1,185 @@
+---
+title: "Schedule Parametrization Sensitivity"
+output:
+  html_document:
+    highlight: textmate
+    theme: cerulean
+    toc: yes
+---
+
+```{r, echo=FALSE}
+library(knitr)
+```
+
+# Configuration
+
+* Release tag: __MKIIRAC__
+* Mode: Experiment
+* Environment: Dynamic schedules
+* Description: Check different placement and reallocation controlle combinations.
+* Goal: Do some combinations perform better than others. 
+* GDrive: [Link](https://docs.google.com/spreadsheet/ccc?key=0AnauMDTWhICjdEZtRVZKN2VXMGlyeTl6S184aFg1MHc#gid=6)
+* Configuration
+  * Initial placement: deactivated
+  * Placement: $\{WorstFitDemand, WorstFit, FirstFitDemand\}$
+  * Reallocation: $\{KMControl, TControl, None\}$
+  * Schedule: $[2000, 3000[$ 
+  * Workload: Times MKII - MKII
+  * Nodes & VMs & Sizes: Based on infrastructure
+  * Executable: `start_benchmark_btree_mkII.py`
+
+## Analysis
+
+For treatment was replicated three times. Mean values are calculated for each treatment. In addition a service quality is calculated. If $r_s$ is the number of successful requests, $r_f$ failed requests, and $r_\hat{f}$ the number of failed requests due to a response time greater than 3 seconds. Service quality is calculated by: 
+
+$$q = \frac{r_s}{r_s+r_f+r_\hat{f}}$$ 
+
+```{r, echo=FALSE, error=FALSE, message=FALSE, prompt=FALSE}
+source("analysis - experiments.R")
+```
+
+### Summary Table
+
+```{r, results='asis', echo=FALSE}
+rownames(result) = seq(nrow(result))
+kable(result, row.names=FALSE, digits=2)
+``` 
+
+```{r, comment=NA, echo=FALSE}
+# Row additions
+addtorow = list()
+addtorow$pos = as.list(c(-1, seq(0, nrow(result) - 5, by=5), nrow(result)))
+addtorow$command = c('\\toprule \n',
+                     '\\midrule \n',
+                     rep('\\midrule \n', nrow(result) / 5 - 1),
+                     '\\bottomrule \n')
+
+# Column names
+column.names = c(
+  '',
+  'Control',
+  'Sched',
+  '$\\overline{\\text{SD}}$',
+  '$\\left \\lceil \\text{SD} \\right \\rceil$',
+  '$\\overline{\\text{CPU}}$',
+  '$\\overline{\\text{MEM}}$',
+  '$\\overline{\\text{RT}}$',
+  '$\\left \\lceil \\text{RT} \\right \\rceil$',
+  '$\\text{O}$',
+  '$\\overline{\\text{MG}}$',
+  '$\\text{SQ}$'
+  )
+names(result) = column.names
+
+# Create table
+print(xtable(result, digits=0), 
+      sanitize.colnames.function = function(x) {return(x) },
+      add.to.row=addtorow,
+      include.rownames=FALSE,
+      include.colnames=TRUE,
+      booktabs=TRUE,
+      hline.after=NULL,
+      comment=FALSE,
+      )
+```
+
+```{r, comment=NA, echo=FALSE}
+# Create table
+print(xtable(result, digits=0), 
+      type='html',
+      sanitize.colnames.function = function(x) {return(x) },
+      include.rownames=FALSE,
+      include.colnames=TRUE,
+      comment=FALSE,
+      )
+```
+
+### Dense Summary Table
+
+```{r, results='asis', echo=FALSE}
+kable(dense.summary.table, row.names=FALSE, digits=2)
+```
+
+```{r, comment=NA,echo=FALSE}
+# Define table titles
+title = c("Cluster",
+          "$\\overline{\\text{SD}}$", "$\\sigma\\text{SD}$", "$\\Delta\\text{SD}$",
+          "$\\overline{\\text{MG}}$", "$\\sigma\\text{MG}$", "$\\Delta\\text{MG}$")
+names(dense.summary.table) = title
+
+
+print(xtable(dense.summary.table, digits=2), 
+      sanitize.colnames.function = function(x) {return(x)},
+      include.rownames=FALSE,
+      include.colnames=TRUE,
+      booktabs=TRUE,
+      comment=FALSE,
+      vline.after=c(5),
+)   
+```
+
+
+```{r, comment=NA, echo=FALSE}
+# Create table
+print(xtable(dense.summary.table, digits=2), 
+      type='html',
+      sanitize.colnames.function = function(x) {return(x) },
+      include.rownames=FALSE,
+      include.colnames=TRUE,
+      comment=FALSE,
+      )
+```
+
+### MRR Ranking of all controllers
+
+MRR ranking is calculated over metrics: migrations, max, and mean, server demand as already done for simulations: 
+
+```{r, echo=FALSE, prompt=FALSE, warning=FALSE, message=FALSE}
+# Build MRR ranking of  experiments
+ranking = mrr.ranking(data)
+
+# Load MRR ranking for simulations
+source("analysis - simulations.R")
+
+# Combine simulation and experiment MRR rankings
+ranking = ddply(ranking, 'CONTROLLER', function(row) {
+  # Get simulation ranking for a given controller
+  sim = sim_mrr_results[as.character(sim_mrr_results$CONTROLLER) == as.character(row$CONTROLLER),]$rank
+  
+  # Add simulation ranking to results
+  row$ranking.sim = sim
+  
+  # Add new row that contains experimental and simulation rankings
+  return(row)
+})
+```
+
+```{r, results='asis', echo=FALSE}
+kable(ranking, row.names=FALSE, digits=2)
+```
+
+```{r, comment=NA,echo=FALSE}
+# Define table titles
+colnames(ranking) = c('Controller', 'MRR (Exp)', 'MRR (Sim)')
+
+# Create table
+print(xtable(ranking, digits=2), 
+      sanitize.colnames.function = function(x) {return(x)},
+      include.rownames=FALSE,
+      include.colnames=TRUE,
+      booktabs=TRUE,
+      comment=FALSE,
+      )
+```
+
+```{r, comment=NA, echo=FALSE}
+# Create table
+print(xtable(ranking, digits=2), 
+      type='html',
+      sanitize.colnames.function = function(x) {return(x) },
+      include.rownames=FALSE,
+      include.colnames=TRUE,
+      comment=FALSE,
+      )
+```
+

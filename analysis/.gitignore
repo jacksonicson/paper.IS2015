@@ -1,0 +1,8 @@
+*.html
+*.pdf
+*.svg
+*.md
+*.Rhistory
+*.RData
+cache
+figure

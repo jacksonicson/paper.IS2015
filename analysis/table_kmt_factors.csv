@@ -1,0 +1,8 @@
+X	KMControl	X	TControl	X
+Factor	Low	High	Low	High
+Overload Threshold $T_o$	80	95	80	95
+Underload Threshold $T_u$	10	40	10	40
+Executiong Interval $I$ (secs)	60	900	60	900
+$k$ value	10	100	50	200
+$m$ value	8	80	-	-
+$\alpha$	-	-	0.05	0.1

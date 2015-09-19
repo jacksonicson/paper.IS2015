@@ -1,0 +1,36 @@
+{
+    "waitForStartSignal": true,
+    "useThrift": true,
+    "sonarHost" : "monitor0.dfg",
+    
+    "targetFactories" : {
+    	"specj" : {
+    		"targetFactoryClass": "de.tum.in.dss.specj.SpecJBenchmark",
+    		"targetClasspathFile": "classpathDriverSpecj.txt",
+    		"rootFolder" : "/opt/rain",    
+		    "targetFactoryParams" : {
+		    	"timesHost" : "monitor0.dfg",
+		    	"port" : 8080,
+		    			    	
+		    	"specj" : {
+		    	 	"### SpecJ: users = scale (=txrate) * THREADS_PER_SCALE_FACTOR (=10)":"####",
+				    "### scale and txrate is the same for SpecJ":"###",
+				    "### default value for scale factor is 10":"###",
+				    "### -> Rain users are calculated by: txrate * 10":"###",
+				    
+		    		"txRate":60,
+				    "maxItemsPerLoc":75000,
+				    "itemsPerTxRate":100,
+				    "parallelism":10,
+				    "audit": true,
+				    "stopIfAuditFailed":true,
+				    "plannedLineBorrowPercent":10,
+		    	},
+ 		   },
+    	},
+    },
+    
+    "targetSchedule" : ${schedule},
+}
+
+

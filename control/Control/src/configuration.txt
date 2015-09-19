@@ -1,0 +1,98 @@
+== Factorial dynamic packing simulations ==
+
+Find out which schedule builder parameters affect the solution quality of dynamic packing (placement) algorithms if reallocation is disabled.
+
+Simulations do not depends on the workload profile set selected. Placement strategies only use number of cores and memory. It is not very realistic to assume workload profiles of arriving domains to be known in advance. Hence, only the domain size is assumed to be known.    
+
+- schedule.schedule_builder (execute 1)
+config = ScheduleConfigurationsSensitivity()
+
+pass 1,2 - Schedules are time limited, arrival rate and lifetime are scaled by 20 
+pass 3 - The schedule builder does not enforce a time limit on the generated schedules.
+pass 4 - Schedule builder does not enforce a time limit on the generated schedules and arrival, lifetimes are not scaled, unlimited parallelity and the minimum runtim is set to rampup + rampdown  
+
+- balancer.simulation_loop (execute 2)
+For optimal solutions
+commands = PlacementOptimalSensitivityCB().build(filename, False)
+
+For heuristic solutions
+commands = PlacementHeuristicSensitivityCB().build(filename, False)  
+
+- conf_controller
+START_INITIAL_PLACEMENT = True
+STRATEGY_INITIAL_PLACEMENT = 'firstFit'
+
+START_REALLOCATION = False
+STRATEGY_REALLOCATION = 'kmcontrol'
+
+START_PLACEMENT = True
+STRATEGY_PLACEMENT = 'dotProduct'
+
+- conf_domains
+AVAILABLE_DOMAINS = 100
+INITIAL_DOMAINS = 0
+
+- conf_domainsize
+DOMAIN_SIZES_SET = SET_MKII
+
+- conf_load
+LOAD_SOURCE = 'times'
+SCRAMBLER = 0
+TIMES_SELECTED_MIX = wtimes_meta.mixmkII
+
+- conf_nodes
+NODE_COUNT = 50
+
+- conf_schedule
+SCHEDULE_ID = 20000
+
+- configuration
+PRODUCTION = False
+DEBUG = False
+
+
+== Simulations on placement&reactive combinations ===
+
+Find out whether different combinations of reallocation and placement strategies produce different results in terms of migrations and servers.
+If the results are different, the goal is to find out which combination works the best and which works the worst. These best and worst combinations
+are then executed in the real testbed infrastructure to see whether the simulation results also hold in the real infrastructure.
+
+- schedule.schedule_builder (execute 1)
+config = ScheduleConfigurationsProduction()
+
+- balancer.simulation_loop (execute 2)
+commands = ReallocationPlacementCB().build(filename, False)
+
+- conf_controller
+START_INITIAL_PLACEMENT = True
+STRATEGY_INITIAL_PLACEMENT = 'round'
+
+START_REALLOCATION = {True, False}
+STRATEGY_REALLOCATION = {'kmcontrol', 'dsapp'}
+
+START_PLACEMENT = True
+STRATEGY_PLACEMENT = {'dotProduct', 'firstFit', 'bestFit', 'random'}
+
+INTERVAL = minu(60)  # Control frequency
+
+- conf_domains
+AVAILABLE_DOMAINS = 100
+INITIAL_DOMAINS = 0
+
+- conf_domainsize
+DOMAIN_SIZES_SET = SET_INTEGRAL
+
+- conf_load
+LOAD_SOURCE = 'times'
+SCRAMBLER = 0
+TIMES_SELECTED_MIX = wtimes_meta.mixmkII
+
+- conf_nodes
+NODE_COUNT = 50
+
+- conf_schedule
+SCHEDULE_ID = 2000X where x from [0-4]
+
+- configuration
+PRODUCTION = False
+DEBUG = False

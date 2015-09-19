@@ -1,0 +1,3 @@
+#!/bin/bash
+rm -rf log.log
+python ./src/balancer/simulation_loop.py $1 > log.log 2>&1 &

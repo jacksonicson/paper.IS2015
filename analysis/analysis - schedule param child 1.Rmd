@@ -1,0 +1,196 @@
+#### Average server demand 
+
+```{r, echo=FALSE}
+# Filter relevant data set (demand or reservation based controllers)
+res = ores
+res = filter.curr(res)
+
+# Model for ANOVA and BoxCox
+model = normalized.avg ~ launches * lifetime * inter_arrival * DOMAIN_SIZES_SET
+
+# BoxCox fitting for normal distribution
+cur = boxcox(model, data=res, lambda=seq(-15,15, len=50), plotit=FALSE)
+best = cur$x[which.max(cur$y)]
+res$normalized.avg.fit = res$normalized.avg^best
+
+# Factor transformation for ANOVA analysis
+res$DOMAIN_SIZES_SET = as.factor(res$DOMAIN_SIZES_SET)
+res$launches = as.factor(res$launches)
+res$lifetime = as.factor(res$lifetime)
+res$inter_arrival = as.factor(res$inter_arrival)
+```
+
+First the normalized value of the *average server demand* is considered for controllers of type: `r filter.curr.name`. A histogram is shown in the following figure: 
+
+```{r, fig.width = 4, fig.height = 4, echo=FALSE, warning=FALSE, message=FALSE}
+p = my.histogram('Normalized average server demand')
+p = p + geom_histogram(data = res,
+                       aes(x=normalized.avg.fit), binwidth = .01, alpha=0.5)  
+print(p)
+```
+
+* Histogram is normally distributed if normalized value is calculated against the random placement controller. This indicates that there are small differences between placement controllers. 
+
+* For ANOVA data __of each group__ has to be normal distributed! Its not possible to see this on a global histogram. Residual plots are a viable way to check normallity assumption of ANOVA.
+
+
+An ANOVA analysis is conducted. The Box-Cox method is used to fit the normalized value to a normal distribution by transforming it at the power of `r best`:
+
+```{r, echo=FALSE}
+ar = aov(model, res)
+model
+summary(ar)
+```
+
+```{r, echo=FALSE, fig.width=4, fig.height=4}
+plot(ar)
+```
+
+
+#### Maximum server demand 
+
+```{r, echo=FALSE}
+res = ores
+res = filter.curr(res)
+model = normalized.max ~ launches * lifetime * inter_arrival * DOMAIN_SIZES_SET
+cur = boxcox(model, data=res, lambda=seq(-15,15, len=50), plotit=FALSE)
+best = cur$x[which.max(cur$y)]
+
+res$DOMAIN_SIZES_SET = as.factor(res$DOMAIN_SIZES_SET)
+res$launches = as.factor(res$launches)
+res$lifetime = as.factor(res$lifetime)
+res$inter_arrival = as.factor(res$inter_arrival)
+res$normalized.max = res$normalized.max
+res$normalized.max.fit = res$normalized.max^best
+```
+
+
+An ANOVA analysis was conducted on the normalized values for the maximum server demand as well. A Box-Cox method is used to fit the normalized value to a normal distribution by transforming it at the power of `r best`. A histogram is shown in the following figure: 
+
+```{r, fig.width = 4, fig.height = 4, echo=FALSE, warning=FALSE, message=FALSE}
+p = my.histogram('Normalized value of max server demand')
+p = p + geom_histogram(data = res,
+                       aes(x=normalized.max), binwidth = .01, alpha=0.5)  
+print(p)
+```
+
+
+Results of the ANOVA analysis are shown below: 
+
+```{r, echo=FALSE}
+ar = aov(model, res)
+model
+summary(ar)
+```
+
+```{r, echo=FALSE, fig.width=4, fig.height=4}
+plot(ar)
+```
+
+
+
+#### One-by-one controller comparison
+
+A one-way ANOVA analysis indicates that differences between placement streatgies for _average server demand_ exist. A TukeyHSD test was used to compare each controller with all others. Summarized, demand based placement controllers outperform reservation based ones significantly. No diffferences exist within the groups of demand and resvervation based placement controllers.
+
+```{r, echo=FALSE}
+res = ores
+model = normalized.avg ~ STRATEGY_PLACEMENT
+
+cur = boxcox(model, data=res, lambda=seq(-15,15, len=50), plotit=FALSE)
+best = cur$x[which.max(cur$y)]
+
+res$launches = as.factor(res$launches)
+res$lifetime = as.factor(res$lifetime)
+res$inter_arrival = as.factor(res$inter_arrival)
+
+res$normalized.max = res$normalized.max^best
+
+res.aov = aov(model, res)
+summary(res.aov)
+TukeyHSD(res.aov)
+````
+
+
+#### Integral domain size analytics 
+
+In the following analysis only data with __integral domain size__ is analyzed. 
+
+##### Average server demand
+
+```{r, echo=FALSE}
+res = ores
+res = ores[res$DOMAIN_SIZES_SET == 1,]
+res = filter.curr(res)
+model = normalized.avg ~ launches * lifetime * inter_arrival
+cur = boxcox(model, data=res, lambda=seq(-15,15, len=50), plotit=FALSE)
+best = cur$x[which.max(cur$y)]
+
+res$launches = as.factor(res$launches)
+res$lifetime = as.factor(res$lifetime)
+res$inter_arrival = as.factor(res$inter_arrival)
+res$normalized.avg = res$normalized.avg^best
+```
+
+
+An ANOVA analysis is conducted on the normalized values for the average server demand. The Box-Cox method is used to fit the normalized value to a normal distribution by transforming it at the power of `r best`. A histogram is shown in the following figure: 
+
+```{r, fig.width = 4, fig.height = 4, echo=FALSE, warning=FALSE, message=FALSE}
+p = my.histogram('Competitive value average server demand')
+p = p + geom_histogram(data = res,
+                         aes(x=normalized.avg), binwidth = .01, alpha=0.5)  
+print(p)
+```
+
+Results of the ANOVA analysis are shown below: 
+
+```{r, echo=FALSE}
+ar = aov(model, res)
+model
+summary(ar)
+```
+
+```{r, echo=FALSE, fig.width=4, fig.height=4}
+plot(ar)
+```
+
+
+##### Maximum server demand
+
+```{r, echo=FALSE}
+res = ores
+res = ores[res$DOMAIN_SIZES_SET == 1,]
+res = filter.curr(res)
+model = normalized.max ~ launches * lifetime * inter_arrival
+cur = boxcox(model, data=res, lambda=seq(-15,15, len=50), plotit=FALSE)
+best = cur$x[which.max(cur$y)]
+
+res$launches = as.factor(res$launches)
+res$lifetime = as.factor(res$lifetime)
+res$inter_arrival = as.factor(res$inter_arrival)
+res$normalized.max = res$normalized.max^best
+```
+
+
+An ANOVA analysis is conducted on the normalized values for the average server demand. The Box-Cox method is used to fit the normalized value to a normal distribution by transforming it at the power of `r best`. A histogram is shown in the following figure: 
+
+```{r, fig.width = 4, fig.height = 4, echo=FALSE, warning=FALSE, message=FALSE}
+p = my.histogram('Normalized-max value')
+p = p + geom_histogram(data = res,
+                         aes(x=normalized.max), binwidth = .01, alpha=0.5)  
+print(p)
+```
+
+
+Results of the ANOVA analysis are shown below: 
+
+```{r, echo=FALSE}
+ar = aov(model, res)
+model
+summary(ar)
+```
+
+```{r, echo=FALSE, fig.width=4, fig.height=4}
+plot(ar)
+```
+

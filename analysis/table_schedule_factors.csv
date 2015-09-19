@@ -1,0 +1,5 @@
+Factor, Low, High
+Lifetime (h), 1, 6
+Inter-arrival time (min), 5, 20
+VM launches, 400, 500
+VM sizes, $2^x$, $x$

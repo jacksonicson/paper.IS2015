@@ -1,0 +1,2 @@
+find regexp: \$\{([a-zA-Z\.]+)\}
+replace by: \$\{'\$\{$1\}'\}
