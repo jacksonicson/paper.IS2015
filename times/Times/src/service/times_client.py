@@ -12,10 +12,10 @@ port_MKI = 7856
 port_MKII = 7858
 port_MKII2 = 7857
 
-def connect(port=port_MKII):
+def connect(port=port_DEFAULT):
     global transport
     global client
-    transport = TSocket.TSocket('monitor0.dfg', port)
+    transport = TSocket.TSocket('localhost', port)
     transport = TTransport.TBufferedTransport(transport)
     protocol = TBinaryProtocol.TBinaryProtocol(transport)
     client = TimeService.Client(protocol)
