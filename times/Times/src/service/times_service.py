@@ -8,9 +8,11 @@ import StringIO
 
 ################################
 ## Configuration              ##
-DATA_DIR = '/mnt/arr0/times'
+DATA_DIR = os.path.abspath('../../../tdb/')
 PORT = 7855
 ################################
+
+print "Using data dir %s" % DATA_DIR
 
 class Wrapper(ttypes.TimeSeries):
     def __init__(self, data):
