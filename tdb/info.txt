@@ -1,1 +1,2 @@
-Place Times time series database files (.tsdb) here.
+Place Times time series database files (.times) here.
+.times files are available at https://github.com/jacksonicson/workload

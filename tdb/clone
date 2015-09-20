@@ -1,0 +1,4 @@
+#!/bin/bash
+git clone https://github.com/jacksonicson/workload
+mv workload/* .
+rm -rf workload
