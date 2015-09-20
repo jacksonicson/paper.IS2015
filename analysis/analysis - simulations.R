@@ -19,7 +19,7 @@ if(exists('fonts.loaded') == FALSE)
 }
 
 # Load data file
-data = read.csv(file="cbc_all.csv", sep="\t", head=T)
+data = read.csv(file="/tmp/controller_sim.csv", sep="\t", head=T)
 # data = read.csv(file="c:/temp/verify_sim.csv", sep="\t", head=T)
 
 # Build controller names
