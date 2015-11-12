@@ -7,7 +7,7 @@ cd ../../../control/Control
 
 sleep 3
 
-RP=/home/nepal/paper.IS2015
+RP=~/work/paper.IS2015
 export PYTHONPATH=${PYTHONPATH}:$RP/control/Control/generated:$RP/control/Control/src:$RP/fflop:$RP/times/Times/src:$RP/dtw/src
 
 echo $PYTHON_PATH
