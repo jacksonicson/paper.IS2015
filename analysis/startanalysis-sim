@@ -1,2 +1,2 @@
 #!/bin/bash
-Rscript -e "rmarkdown::render('analysis - simulations.Rmd')"
+Rscript -e "library(grid); rmarkdown::render('analysis - simulations.Rmd')"
